@@ -3,6 +3,8 @@
 // const pieces = await reponse.json();
 
 
+
+
 // for (let i=0; i < pieces.length; i++){
 
 //  // Récupération de l'élément du DOM qui accueillera les fiches
@@ -89,62 +91,7 @@
 
 
 
-// // *******************************
-// // *   filtre piece abordables   * 
-// // *******************************
 
-// const noms = pieces.map(piece => piece.nom);
-
-// for (let i = pieces.length-1; i >=0; i--){
-//     if (pieces[i].prix >35){
-//         noms.splice(i,1)
-//     }
-// }
-// console.log(noms)
-
-// // creation de la liste
-// const abordableElements = document.createElement("ul");
-
-// // ajout de chaque nom a la liste
-// for (let i=0; i < noms.length; i++){
-//     const nomElement= document.createElement("li");
-//     nomElement.innerText = noms[i];
-//     abordableElements.appendChild(nomElement)
-// }
-
-// // ajout de l'en-tete puis de la liste au bloc resultat filtres
-// document.querySelector(".abordables")
-//     .appendChild(abordableElements)
-
-
-// // ************************************
-// // *    filtre pieces disponibles     * 
-// // ************************************
-
-// const noms2 = pieces.map(piece => piece.nom);
-// const prix = pieces.map(piece => piece.prix);
-
-//     for (let i = pieces.length-1; i >= 0 ; i--){
-//         if (pieces[i].disponibilite !== true){
-//             noms2.splice(i,1)
-//             prix.splice(i,1)
-//         }
-//     }
-//     console.log(noms2,prix)
-    
-//     // creation de la liste
-//     const disponibleElements = document.createElement("ul");
-    
-//     // ajout de chaque nom a la liste
-//     for (let i=0; i < noms2.length; i++){
-//         const nomElement= document.createElement("li");
-//         nomElement.innerText = `${noms2[i]} - ${prix[i]}€` ;
-//         disponibleElements.appendChild(nomElement)
-//     }
-    
-//     // ajout de l'en-tete puis de la liste au bloc resultat filtres
-//     document.querySelector(".disponible")
-//         .appendChild(disponibleElements)
 
 
 
@@ -153,10 +100,29 @@
 // *          RENDRE LE SITE INTERACTIF          *
 // ***********************************************
 
-// Récupération des pieces depuis le fichier JSON
-const pieces = await fetch("pieces-autos.json").then(pieces => pieces.json())
+
+import { afficherGraphiqueAvis, ajoutListenerAvis, ajoutListenerEnvoyerAvis, ajouterAvis } from "./avis.js";
+
+// Rćupérations de pieces éventuellement stockées dans le localStorage
+let pieces = window.localStorage.getItem("pieces");
+    if(pieces === null){
+        // Récupération des pieces depuis l'API'
+        const reponse = await fetch("http://localhost:8081/pieces" )
+        pieces = await reponse.json()
+        // Transformation de pieces en JSON
+        const valeurPieces = JSON.stringify(pieces)
+        //  Stockage dans le localStorage des informations
+        window.localStorage.setItem("pieces", valeurPieces)
+    }else{
+        pieces = JSON.parse(pieces)
+    }
+
+ajoutListenerEnvoyerAvis()
+
+
 
 // Fonction qui génère toute la page web
+// *************************************
 
 function genererPieces(pieces) {
     for (let i=0; i < pieces.length; i++){
@@ -168,6 +134,7 @@ function genererPieces(pieces) {
         const article = pieces[i];
         // Création d'une balise dédiée à une pièce auto
         const pieceElement = document.createElement("article");
+        pieceElement.dataset.id= pieces[i].id
         // On cré l'´ėlément image
         const imageElement = document.createElement("img");
         // On accède à l'indice "i" de la liste pieces pour configurer la source de l'image
@@ -188,6 +155,11 @@ function genererPieces(pieces) {
         const stockElement = document.createElement("p");
         stockElement.innerText = (article.disponibilite === true ? "En stock" : "Rupture de stock");
 
+        // Ajout d'un bouton pour lasisser un avis sur le produit
+        const avisBouton = document.createElement("button");
+        avisBouton.dataset.id = article.id;
+        avisBouton.textContent = "Afficher les avis";
+
         // On rattache les éléments à pieceElement (la balise article)
         pieceElement.appendChild(imageElement);
         pieceElement.appendChild(nomElement);
@@ -195,14 +167,29 @@ function genererPieces(pieces) {
         pieceElement.appendChild(categorieElement);
         pieceElement.appendChild(descriptionElement);
         pieceElement.appendChild(stockElement)
+        // Affichage du bouton dans la carte article
+        pieceElement.appendChild(avisBouton);
+        
 
         // On rattache la balise article a la section Fiches
         sectionFiche.appendChild(pieceElement);
     }
+    ajoutListenerAvis()
 }
 
 // premier affichage de la page
 genererPieces(pieces);
+
+for(let i = 0; i < pieces.length; i++){
+    const id = pieces[i].id;
+    const avisJSON = window.localStorage.getItem(`avis-piece-${id}`);
+    const avis = JSON.parse(avisJSON);
+
+    if(avis !== null){
+        const pieceElement = document.querySelector(`article[data-id="${id}"]`);
+        ajouterAvis(pieceElement, avis)
+    }
+}
 
 // Ajout du listener pour trier les peces par ordre de prix croissant
 
@@ -244,3 +231,68 @@ const rangePrix = document.querySelector("#prix-max");
     document.querySelector(".fiches").innerHTML="";
     genererPieces(prixMaxFiltre);
 });
+
+// *******************************
+// *   filtre piece abordables   * 
+// *******************************
+
+const noms = pieces.map(piece => piece.nom);
+
+for (let i = pieces.length-1; i >=0; i--){
+    if (pieces[i].prix >35){
+        noms.splice(i,1)
+    }
+}
+console.log(noms)
+
+// creation de la liste
+const abordableElements = document.createElement("ul");
+
+// ajout de chaque nom a la liste
+for (let i=0; i < noms.length; i++){
+    const nomElement= document.createElement("li");
+    nomElement.innerText = noms[i];
+    abordableElements.appendChild(nomElement)
+}
+
+// ajout de l'en-tete puis de la liste au bloc resultat filtres
+document.querySelector(".abordables")
+    .appendChild(abordableElements)
+
+
+// ************************************
+// *    filtre pieces disponibles     * 
+// ************************************
+
+const noms2 = pieces.map(piece => piece.nom);
+const prix = pieces.map(piece => piece.prix);
+
+    for (let i = pieces.length-1; i >= 0 ; i--){
+        if (pieces[i].disponibilite !== true){
+            noms2.splice(i,1)
+            prix.splice(i,1)
+        }
+    }
+    console.log(noms2,prix)
+    
+    // creation de la liste
+    const disponibleElements = document.createElement("ul");
+    
+    // ajout de chaque nom a la liste
+    for (let i=0; i < noms2.length; i++){
+        const nomElement= document.createElement("li");
+        nomElement.innerText = `${noms2[i]} - ${prix[i]}€` ;
+        disponibleElements.appendChild(nomElement)
+    }
+    
+    // ajout de l'en-tete puis de la liste au bloc resultat filtres
+    document.querySelector(".disponible")
+        .appendChild(disponibleElements)
+
+//  Ajout du listener pour mettre a jour des données du localStorage
+const boutonMaj = document.querySelector(".btn-maj");
+boutonMaj.addEventListener("click", function(){
+    window.localStorage.removeItem("pieces");
+}) 
+
+await afficherGraphiqueAvis()
